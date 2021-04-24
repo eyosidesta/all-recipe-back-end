@@ -1,39 +1,34 @@
-const express = require('express')
 const fetch = require("node-fetch")
+const express = require('express')
 const ensureToken = require('../../authService.js')
-
 const router = express.Router()
 
-const HASURA_AddRecipe_OPERATION = `
-mutation addRecipe($name:String!, $description: String, $image: String!, $user_id: Int!) {
-  insert_recipes_one(object: {
-    name: $name,
-    description: $description,
-    image: $image,
-    user_id: $user_id
-  }) {
+const HASURA_OPERATION = `
+query getRecipeById($id: Int!) {
+  recipes_by_pk(id: $id) {
     id
     name
     description
     image
+    user_id
     user {
       id
       fullname
       email
-      
     }
   }
 }
 `;
 
-const executeAddRecipe = async (variables) => {
+// execute the parent operation in Hasura
+const execute = async (variables) => {
   const fetchResponse = await fetch(
     "https://receipeapp.hasura.app/v1/graphql",
     {
       method: 'POST',
       headers: {'x-hasura-admin-secret': 'lbZLZrZ7ya8XoEapSn0F07YXka827Xb3QWAAGis2zwoBYEUWZnvjqBKoSRDqiHf8'},
       body: JSON.stringify({
-        query: HASURA_AddRecipe_OPERATION,
+        query: HASURA_OPERATION,
         variables
       })
     }
@@ -42,23 +37,27 @@ const executeAddRecipe = async (variables) => {
   console.log('DEBUG: ', data);
   return data;
 };
+  
 
-router.post('/addRecipe', ensureToken, async (req, res) => {
+// Request Handler
+router.post('/getRecipeById', ensureToken,async (req, res) => {
 
   // get request input
-  const { name, description, image, user_id } = req.body;
+  const { id } = req.body;
 
   // run some business logic
 
   // execute the Hasura operation
-  const { data, errors } = await executeAddRecipe({ name, description, image, user_id });
+  const { data, errors } = await execute({ id });
+
   // if Hasura operation errors, then throw error
   if (errors) {
     return res.status(400).json(errors[0])
   }
 
+  // success
   return res.json({
-    ...data.insert_recipes_one
+    ...data.recipes_by_pk
   })
 
 });

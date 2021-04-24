@@ -1,22 +1,26 @@
 const fetch = require("node-fetch")
+const express = require('express')
+
+const router = express.Router()
 
 const HASURA_OPERATION = `
-mutation addIngredient($description: String!, $recipe_id: Int!) {
-  insert_ingredients_one(object: {
-    description: $description,
-    recipe_id: $recipe_id
-  }) {
+query getDirectionById($id: Int!) {
+  directions_by_pk(id: $id) {
     id
     description
+    recipe_id
     recipe {
       id
       name
       description
+      image
+      user_id
       user {
+        id
         fullname
         email
       }
-    } 
+    }
   }
 }
 `;
@@ -27,6 +31,7 @@ const execute = async (variables) => {
     "https://receipeapp.hasura.app/v1/graphql",
     {
       method: 'POST',
+      headers: {'x-hasura-admin-secret': 'lbZLZrZ7ya8XoEapSn0F07YXka827Xb3QWAAGis2zwoBYEUWZnvjqBKoSRDqiHf8'},
       body: JSON.stringify({
         query: HASURA_OPERATION,
         variables
@@ -40,15 +45,15 @@ const execute = async (variables) => {
   
 
 // Request Handler
-app.post('/addIngredient', async (req, res) => {
+router.post('/getDirectionById', async (req, res) => {
 
   // get request input
-  const { description, recipe_id } = req.body.input;
+  const { id } = req.body;
 
   // run some business logic
 
   // execute the Hasura operation
-  const { data, errors } = await execute({ description, recipe_id });
+  const { data, errors } = await execute({ id });
 
   // if Hasura operation errors, then throw error
   if (errors) {
@@ -57,7 +62,9 @@ app.post('/addIngredient', async (req, res) => {
 
   // success
   return res.json({
-    ...data.insert_ingredients_one
+    ...data.directions_by_pk
   })
 
 });
+
+module.exports = router
